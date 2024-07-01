@@ -4,6 +4,7 @@ import { ig, login } from './utils';
 import logger from '@/utils/logger';
 import { config } from '@/config';
 import { renderItems } from '../common-utils';
+import InvalidParameterError from '@/errors/types/invalid-parameter';
 
 // loadContent pulls the desired user/tag/etc
 async function loadContent(category, nameOrId, tryGet) {
@@ -57,7 +58,7 @@ async function loadContent(category, nameOrId, tryGet) {
 
 export const route: Route = {
     path: '/:category/:key',
-    categories: ['social-media'],
+    categories: ['social-media', 'popular'],
     example: '/instagram/user/stefaniejoosten',
     parameters: { category: 'Feed category, see table above', key: 'Username / Hashtag name' },
     features: {
@@ -66,6 +67,14 @@ export const route: Route = {
                 name: 'IG_PROXY',
                 optional: true,
                 description: '',
+            },
+            {
+                name: 'IG_USERNAME',
+                description: 'Instagram username',
+            },
+            {
+                name: 'IG_PASSWORD',
+                description: 'Instagram password, due to [Instagram Private API](https://github.com/dilame/instagram-private-api) restrictions, you have to setup your credentials on the server. 2FA is not supported.',
             },
         ],
         requirePuppeteer: false,
@@ -77,9 +86,6 @@ export const route: Route = {
     name: 'User Profile / Hashtag - Private API',
     maintainers: ['oppilate', 'DIYgod'],
     handler,
-    description: `:::warning
-Due to [Instagram Private API](https://github.com/dilame/instagram-private-api) restrictions, you have to setup your credentials on the server. 2FA is not supported. See [deployment guide](https://docs.rsshub.app/deploy/) for more.
-:::`,
 };
 
 async function handler(ctx) {
@@ -93,7 +99,7 @@ async function handler(ctx) {
     // e.g. username for user feed
     const { category, key } = ctx.req.param();
     if (!availableCategories.includes(category)) {
-        throw new Error('Such feed is not supported.');
+        throw new InvalidParameterError('Such feed is not supported.');
     }
 
     if (config.instagram && config.instagram.proxy) {

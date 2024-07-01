@@ -1,3 +1,4 @@
+import InvalidParameterError from '@/errors/types/invalid-parameter';
 import { Route } from '@/types';
 import cache from '@/utils/cache';
 import got from '@/utils/got';
@@ -13,7 +14,7 @@ async function getUserId(slug) {
     });
 
     if (response.data.error !== 0) {
-        throw new Error('User Not Found');
+        throw new InvalidParameterError('User Not Found');
     }
 
     return response.data.data.id;
@@ -60,7 +61,13 @@ async function handler(ctx) {
             const key = `sspai: ${item.id}`;
             return cache.tryGet(key, async () => {
                 const response = await got(link);
-                description = response.data.data.body;
+                // description = response.data.data.body;
+                const articleData = response.data.data;
+                const banner = articleData.promote_image;
+                if (banner) {
+                    description = `<img src="${banner}" alt="Article Cover Image" style="display: block; margin: 0 auto;"><br>`;
+                }
+                description += articleData.body;
 
                 return {
                     title: item.title.trim(),

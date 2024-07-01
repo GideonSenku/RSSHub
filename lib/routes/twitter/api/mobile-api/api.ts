@@ -1,17 +1,18 @@
 import { baseUrl, gqlMap, gqlFeatures, consumerKey, consumerSecret } from './constants';
 import { config } from '@/config';
 import logger from '@/utils/logger';
-import got from '@/utils/got';
 import OAuth from 'oauth-1.0a';
 import CryptoJS from 'crypto-js';
 import queryString from 'query-string';
-import { initToken, getToken } from './token';
+import { getToken } from './token';
 import cache from '@/utils/cache';
+import InvalidParameterError from '@/errors/types/invalid-parameter';
+import ofetch from '@/utils/ofetch';
 
 const twitterGot = async (url, params) => {
     const token = await getToken();
 
-    const oauth = OAuth({
+    const oauth = new OAuth({
         consumer: {
             key: consumerKey,
             secret: consumerSecret,
@@ -27,7 +28,7 @@ const twitterGot = async (url, params) => {
             connection: 'keep-alive',
             'content-type': 'application/json',
             'x-twitter-active-user': 'yes',
-            authority: 'api.twitter.com',
+            authority: 'api.x.com',
             'accept-encoding': 'gzip',
             'accept-language': 'en-US,en;q=0.9',
             accept: '*/*',
@@ -35,11 +36,14 @@ const twitterGot = async (url, params) => {
         },
     };
 
-    const response = await got(requestData.url, {
+    const response = await ofetch.raw(requestData.url, {
         headers: oauth.toHeader(oauth.authorize(requestData, token)),
     });
+    if (response.status === 401) {
+        cache.globalCache.set(token.cacheKey, '');
+    }
 
-    return response.data;
+    return response._data;
 };
 
 const paginationTweets = async (endpoint, userId, variables, path) => {
@@ -209,7 +213,7 @@ const getUser = async (id) => {
 const cacheTryGet = async (_id, params, func) => {
     const id = await getUserID(_id);
     if (id === undefined) {
-        throw new Error('User not found');
+        throw new InvalidParameterError('User not found');
     }
     const funcName = func.name;
     const paramsString = JSON.stringify(params);
@@ -278,5 +282,5 @@ export default {
     excludeRetweet,
     getSearch,
     getUserTweet,
-    init: initToken,
+    init: () => void 0,
 };
